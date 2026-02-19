@@ -1,16 +1,54 @@
 # Authentication Errors
 
-Integrating the authentication API directly requires handling error responses for email verification, MFA challenges, identity linking, and organization selection. One or more of these responses may be returned for an authentication attempt with any authentication method.
+When integrating the authentication API directly (custom UI), your application must handle specific error responses that can be returned during any authentication attempt. These errors signal that additional steps are required before authentication can complete.
 
-> Hosted AuthKit handles authentication errors for you and may be a good choice if you prefer a simpler integration.
-
-**Source:** https://workos.com/docs/reference/authkit/authentication-errors
+> **Tip:** Hosted AuthKit handles all of these errors automatically. Use it if you prefer a simpler integration.
 
 ---
 
-## Email Verification Required Error
+## Error Handling Pattern (Python)
 
-Indicates that a user with an unverified email address attempted to authenticate in an environment where email verification is required.
+```python
+import workos
+from workos.exceptions import AuthenticationError
+
+client = workos.WorkOSClient(
+    api_key="sk_example_123456789",
+    client_id="client_123456789",
+)
+
+try:
+    result = client.user_management.authenticate_with_password(
+        email="marcelina@example.com",
+        password="i8uv6g34kd490s",
+    )
+    # Authentication succeeded
+    user = result.user
+
+except AuthenticationError as e:
+    if e.code == "email_verification_required":
+        handle_email_verification(e)
+    elif e.code == "mfa_enrollment":
+        handle_mfa_enrollment(e)
+    elif e.code == "mfa_challenge":
+        handle_mfa_challenge(e)
+    elif e.code == "organization_selection_required":
+        handle_org_selection(e)
+    elif e.code == "sso_required":
+        handle_sso_redirect(e)
+    elif e.code == "organization_authentication_methods_required":
+        handle_auth_method_selection(e)
+```
+
+---
+
+## Error Types
+
+### `email_verification_required`
+
+A user with an unverified email address attempted to authenticate in an environment where email verification is required.
+
+**Error payload:**
 
 ```json
 {
@@ -22,23 +60,23 @@ Indicates that a user with an unverified email address attempted to authenticate
 }
 ```
 
-### Properties
+| Field                      | Type  | Description                                                                |
+|----------------------------|-------|----------------------------------------------------------------------------|
+| `code`                     | `str` | `"email_verification_required"`                                            |
+| `message`                  | `str` | Human-readable error message.                                              |
+| `pending_authentication_token` | `str` | Token to pass to `authenticate_with_email_verification()`.            |
+| `email`                    | `str` | The user's email address.                                                  |
+| `email_verification_id`    | `str` | Use with `get_email_verification()` to fetch the code if sending manually. |
 
-| Field | Type |
-|---|---|
-| `code` | `"email_verification_required"` |
-| `message` | string |
-| `pending_authentication_token` | string |
-| `email` | string |
-| `email_verification_id` | string |
-
-If the [email setting](https://workos.com/docs/authkit/custom-emails) for email verification is enabled, WorkOS automatically sends a one-time code. If not, retrieve the code manually. Use the `pending_authentication_token` and the code to [authenticate](./04-authentication.md#authenticate-with-email-verification-code) the user and verify their email.
+**Resolution:** Pass the `pending_authentication_token` and the user-entered code to [`authenticate_with_email_verification()`](https://workos.com/docs/reference/authkit/authentication).
 
 ---
 
-## MFA Enrollment Error
+### `mfa_enrollment`
 
-Indicates that a user not enrolled in MFA attempted to authenticate in an environment where MFA is required.
+A user who is not enrolled in MFA attempted to authenticate in an environment where MFA is required.
+
+**Error payload:**
 
 ```json
 {
@@ -49,24 +87,22 @@ Indicates that a user not enrolled in MFA attempted to authenticate in an enviro
 }
 ```
 
-### Properties
+| Field                          | Type   | Description                                              |
+|--------------------------------|--------|----------------------------------------------------------|
+| `code`                         | `str`  | `"mfa_enrollment"`                                       |
+| `message`                      | `str`  | Human-readable error message.                            |
+| `pending_authentication_token` | `str`  | Token to pass to `authenticate_with_totp()` after enrollment. |
+| `user`                         | `User` | The user who needs to enroll.                            |
 
-| Field | Type |
-|---|---|
-| `code` | `"mfa_enrollment"` |
-| `message` | string |
-| `pending_authentication_token` | string |
-| `user` | user object |
-
-Present an [MFA enrollment](./10-mfa.md#enroll-an-authentication-factor) UI to the user. After enrollment, present an MFA challenge UI and authenticate them with a [TOTP code](./04-authentication.md#authenticate-with-totp-mfa) and the `pending_authentication_token`.
-
-MFA can be enabled via the [Authentication page](https://dashboard.workos.com/authentication) in the WorkOS dashboard.
+**Resolution:** Present an MFA enrollment UI, call [`enroll_auth_factor()`](https://workos.com/docs/reference/authkit/mfa), then challenge the user and authenticate with [`authenticate_with_totp()`](https://workos.com/docs/reference/authkit/authentication).
 
 ---
 
-## MFA Challenge Error
+### `mfa_challenge`
 
-Indicates that a user enrolled in MFA attempted to authenticate and must complete an MFA challenge.
+A user enrolled in MFA attempted to authenticate and must complete a TOTP challenge.
+
+**Error payload:**
 
 ```json
 {
@@ -74,29 +110,32 @@ Indicates that a user enrolled in MFA attempted to authenticate and must complet
   "message": "The user must complete an MFA challenge to finish authenticating.",
   "pending_authentication_token": "YQyCkYfuVw2mI3tzSrk2C1Y7S",
   "authentication_factors": [
-    { "id": "auth_factor_01FVYZ5QM8N98T9ME5BCB2BBMJ", "type": "totp" }
+    {
+      "id": "auth_factor_01FVYZ5QM8N98T9ME5BCB2BBMJ",
+      "type": "totp"
+    }
   ],
   "user": { ... }
 }
 ```
 
-### Properties
+| Field                          | Type     | Description                                                            |
+|--------------------------------|----------|------------------------------------------------------------------------|
+| `code`                         | `str`    | `"mfa_challenge"`                                                      |
+| `message`                      | `str`    | Human-readable error message.                                          |
+| `pending_authentication_token` | `str`    | Token to pass to `authenticate_with_totp()`.                           |
+| `authentication_factors`       | `list`   | The factors the user is enrolled in.                                   |
+| `user`                         | `User`   | The user who must complete the challenge.                              |
 
-| Field | Type |
-|---|---|
-| `code` | `"mfa_challenge"` |
-| `message` | string |
-| `pending_authentication_token` | string |
-| `authentication_factors` | array |
-| `user` | user object |
-
-Challenge one of the returned factors and present a TOTP UI. Then [authenticate with TOTP](./04-authentication.md#authenticate-with-totp-mfa) using the code, `pending_authentication_token`, and challenge ID.
+**Resolution:** Challenge one of the returned factors, present a TOTP input UI, and call [`authenticate_with_totp()`](https://workos.com/docs/reference/authkit/authentication) with the code, challenge ID, and pending token.
 
 ---
 
-## Organization Selection Required Error
+### `organization_selection_required`
 
-Indicates that the user is a member of multiple organizations and must select which one to sign into.
+The user is a member of multiple organizations and must select which one to sign in to.
+
+**Error payload:**
 
 ```json
 {
@@ -104,30 +143,30 @@ Indicates that the user is a member of multiple organizations and must select wh
   "message": "The user must choose an organization to finish their authentication.",
   "pending_authentication_token": "YQyCkYfuVw2mI3tzSrk2C1Y7S",
   "organizations": [
-    { "id": "org_01H93RZAP85YGYZJXYPAZ9QTXF", "name": "Foo Corp" },
-    { "id": "org_01H93S4E6GB5A8PFNKGTA4S42X", "name": "Bar Corp" }
+    {"id": "org_01H93RZAP85YGYZJXYPAZ9QTXF", "name": "Foo Corp"},
+    {"id": "org_01H93S4E6GB5A8PFNKGTA4S42X", "name": "Bar Corp"}
   ],
   "user": { ... }
 }
 ```
 
-### Properties
+| Field                          | Type   | Description                                                       |
+|--------------------------------|--------|-------------------------------------------------------------------|
+| `code`                         | `str`  | `"organization_selection_required"`                               |
+| `message`                      | `str`  | Human-readable error message.                                     |
+| `pending_authentication_token` | `str`  | Token to pass to `authenticate_with_organization_selection()`.    |
+| `organizations`                | `list` | List of organizations the user belongs to.                        |
+| `user`                         | `User` | The authenticated user.                                           |
 
-| Field | Type |
-|---|---|
-| `code` | `"organization_selection_required"` |
-| `message` | string |
-| `pending_authentication_token` | string |
-| `user` | user object |
-| `organizations` | array |
-
-Display the organization list and [authenticate with organization selection](./04-authentication.md#authenticate-with-organization-selection) using the `pending_authentication_token`.
+**Resolution:** Display the list of organizations, then call [`authenticate_with_organization_selection()`](https://workos.com/docs/reference/authkit/authentication) with the selected org and pending token.
 
 ---
 
-## SSO Required Error
+### `sso_required`
 
-Indicates that a user attempted to authenticate into an organization that requires SSO using a different method.
+The user attempted to authenticate into an organization that requires SSO using a non-SSO method.
+
+**Error payload:**
 
 ```json
 {
@@ -137,23 +176,23 @@ Indicates that a user attempted to authenticate into an organization that requir
 }
 ```
 
-### Properties
+| Field                | Type   | Description                                              |
+|----------------------|--------|----------------------------------------------------------|
+| `error`              | `str`  | `"sso_required"`                                         |
+| `error_description`  | `str`  | Human-readable error message.                            |
+| `email`              | `str`  | The user's email address.                                |
+| `connection_ids`     | `list` | SSO connection IDs that can complete authentication.     |
+| `pending_authentication_token` | `str` | Optional — may be included.                 |
 
-| Field | Type |
-|---|---|
-| `error` | `"sso_required"` |
-| `error_description` | string |
-| `email` | string |
-| `connection_ids` | array |
-| `pending_authentication_token` | string (optional) |
-
-Use one of the `connection_ids` to [get the authorization URL](./04-authentication.md#get-an-authorization-url) and redirect the user to their SSO provider.
+**Resolution:** Use one of the `connection_ids` with [`get_authorization_url()`](https://workos.com/docs/reference/authkit/authentication) and redirect the user to the SSO login flow.
 
 ---
 
-## Organization Authentication Required Error
+### `organization_authentication_methods_required`
 
-Indicates that a user attempted to authenticate with a method not allowed by the organization's [domain policy](https://workos.com/docs/authkit/organization-policies).
+The user attempted to authenticate with a method not allowed by their organization's domain policy.
+
+**Error payload:**
 
 ```json
 {
@@ -171,14 +210,21 @@ Indicates that a user attempted to authenticate with a method not allowed by the
 }
 ```
 
-### Properties
+| Field                | Type   | Description                                                        |
+|----------------------|--------|--------------------------------------------------------------------|
+| `error`              | `str`  | `"organization_authentication_methods_required"`                   |
+| `error_description`  | `str`  | Human-readable error message.                                      |
+| `email`              | `str`  | The user's email address.                                          |
+| `sso_connection_ids` | `list` | SSO connection IDs available to complete authentication.           |
+| `auth_methods`       | `dict` | Map of auth methods to booleans indicating which are allowed.      |
 
-| Field | Type |
-|---|---|
-| `error` | `"organization_authentication_methods_required"` |
-| `error_description` | string |
-| `email` | string |
-| `sso_connection_ids` | array |
-| `auth_methods` | object |
+**Resolution:** Present the allowed authentication options and redirect the user to the appropriate flow.
 
-Present the user with the allowed authentication options so they can choose which method to continue with.
+---
+
+## Related
+
+- [Authentication](https://workos.com/docs/reference/authkit/authentication)
+- [Email Verification](https://workos.com/docs/reference/authkit/email-verification)
+- [Multi-Factor Auth](https://workos.com/docs/reference/authkit/mfa)
+- [Organization Policies](https://workos.com/docs/authkit/organization-policies)

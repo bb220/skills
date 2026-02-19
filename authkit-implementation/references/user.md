@@ -6,213 +6,150 @@ Users may belong to [organizations](https://workos.com/docs/reference/organizati
 
 See the [events reference](https://workos.com/docs/events/user) documentation for the user events.
 
-**Source:** https://workos.com/docs/reference/authkit/user
-
 ---
 
 ## The User Object
 
-```json
-{
-  "object": "user",
-  "id": "user_01E4ZCR3C56J083X43JQXF3JK5",
-  "email": "marcelina.davis@example.com",
-  "first_name": "Marcelina",
-  "last_name": "Davis",
-  "email_verified": true,
-  "profile_picture_url": "https://workoscdn.com/images/v1/123abc",
-  "last_sign_in_at": "2021-06-25T19:07:33.155Z",
-  "external_id": "f1ffa2b2-c20b-4d39-be5c-212726e11222",
-  "metadata": {
-    "timezone": "America/New_York"
-  },
-  "locale": "en-US",
-  "created_at": "2021-06-25T19:07:33.155Z",
-  "updated_at": "2021-06-25T19:07:33.155Z"
-}
+```python
+from workos.types.user_management import User
+
+user = User(
+    object="user",
+    id="user_01E4ZCR3C56J083X43JQXF3JK5",
+    email="marcelina.davis@example.com",
+    first_name="Marcelina",
+    last_name="Davis",
+    email_verified=True,
+    profile_picture_url="https://workoscdn.com/images/v1/123abc",
+    last_sign_in_at="2021-06-25T19:07:33.155Z",
+    created_at="2021-06-25T19:07:33.155Z",
+    updated_at="2021-06-25T19:07:33.155Z",
+)
 ```
-
-### Properties
-
-| Property | Type | Required | Description |
-|---|---|---|---|
-| `object` | `"user"` | ✓ | Distinguishes the user object. |
-| `id` | string | ✓ | The unique ID of the user. |
-| `email` | string | ✓ | The email address of the user. |
-| `first_name` | string | optional | The first name of the user. |
-| `last_name` | string | optional | The last name of the user. |
-| `email_verified` | boolean | ✓ | Whether the user's email has been verified. |
-| `profile_picture_url` | string | optional | A URL reference to an image representing the user. Currently present for users with a Google or GitHub OAuth profile picture. |
-| `last_sign_in_at` | string | optional | The timestamp when the user last signed in. |
-| `external_id` | string | optional | The external ID of the user. |
-| `metadata` | object | ✓ | Object containing [metadata](https://workos.com/docs/authkit/metadata) key/value pairs associated with the user. |
-| `locale` | string | optional | The user's preferred locale. |
-| `created_at` | string | ✓ | The timestamp when the user was created. |
-| `updated_at` | string | ✓ | The timestamp when the user was last updated. |
 
 ---
 
-## Get a User
+## Attributes
+
+### `User`
+
+| Attribute             | Type   | Required | Description                                                                                                                                                                                  |
+|-----------------------|--------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `id`                  | `str`  | Required | The unique ID of the user.                                                                                                                                                                   |
+| `email`               | `str`  | Required | The email address of the user.                                                                                                                                                               |
+| `email_verified`      | `bool` | Required | Whether the user's email has been verified.                                                                                                                                                  |
+| `created_at`          | `str`  | Required | The timestamp when the user was created.                                                                                                                                                     |
+| `updated_at`          | `str`  | Required | The timestamp when the user was last updated.                                                                                                                                                |
+| `first_name`          | `str`  | Optional | The first name of the user.                                                                                                                                                                  |
+| `last_name`           | `str`  | Optional | The last name of the user.                                                                                                                                                                   |
+| `profile_picture_url` | `str`  | Optional | A URL reference to an image representing the user. Currently present for users with a profile picture from a linked Google or GitHub OAuth identity. New image sources may be added in the future. |
+| `last_sign_in_at`     | `str`  | Optional | The timestamp when the user last signed in.                                                                                                                                                  |
+| `external_id`         | `str`  | Optional | The external ID of the user.                                                                                                                                                                 |
+| `metadata`            | `dict` | Optional | Object containing [metadata](https://workos.com/docs/authkit/metadata) key/value pairs associated with the user.                                                                            |
+| `locale`              | `str`  | Optional | The user's preferred locale.                                                                                                                                                                 |
+
+---
+
+## Operations
+
+### Get User
 
 Get the details of an existing user.
 
-`GET /user_management/users/:id`
+```python
+import workos
 
-```bash
-curl https://api.workos.com/user_management/users/user_01E4ZCR3C56J083X43JQXF3JK5 \
-  --header "Authorization: Bearer sk_example_123456789"
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+user = client.user_management.get_user(
+    user_id="user_01E4ZCR3C56J083X43JQXF3JK5"
+)
 ```
 
-**Parameters**
+### Get User by External ID
 
-| Parameter | Type | Description |
-|---|---|---|
-| `id` | string | The ID of the user. |
+Get the details of an existing user by an external identifier.
 
-**Returns:** [`user`](#the-user-object)
+```python
+import workos
 
----
+client = workos.WorkOSClient(api_key="sk_example_123456789")
 
-## Get a User by External ID
-
-Get the details of an existing user by an [external identifier](https://workos.com/docs/authkit/metadata/external-identifiers).
-
-`GET /user_management/users/external_id/:external_id`
-
-```bash
-curl https://api.workos.com/user_management/users/external_id/f1ffa2b2-c20b-4d39-be5c-212726e11222 \
-  --header "Authorization: Bearer sk_example_123456789"
+user = client.user_management.get_user_by_external_id(
+    external_id="f1ffa2b2-c20b-4d39-be5c-212726e11222"
+)
 ```
 
-**Parameters**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `external_id` | string | The external ID of the user. |
-
-**Returns:** [`user`](#the-user-object)
-
----
-
-## List Users
+### List Users
 
 Get a list of all of your existing users matching the criteria specified.
 
-`GET /user_management/users`
+```python
+import workos
 
-```bash
-curl https://api.workos.com/user_management/users \
-  --header "Authorization: Bearer sk_example_123456789"
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+users = client.user_management.list_users(
+    email="marcelina.davis@example.com",
+    limit=10,
+    order="desc",
+)
 ```
 
-**Parameters**
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `email` | string | optional | Filter by email. |
-| `organization_id` | string | optional | Filter by organization. |
-| `limit` | number | optional | Max results to return. |
-| `before` | string | optional | Pagination cursor. |
-| `after` | string | optional | Pagination cursor. |
-| `order` | `"asc" \| "desc"` | optional | Sort order. |
-
-**Returns:** `{ data: array, list_metadata: object }`
-
----
-
-## Create a User
+### Create User
 
 Create a new user in the current environment.
 
-`POST /user_management/users`
+```python
+import workos
 
-```bash
-curl --request POST \
-  --url https://api.workos.com/user_management/users \
-  --header "Authorization: Bearer sk_example_123456789" \
-  --header "Content-Type: application/json" \
-  -d '{
-    "email": "marcelina@example.com",
-    "password": "i8uv6g34kd490s",
-    "first_name": "Marcelina",
-    "last_name": "Davis",
-    "email_verified": false
-  }'
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+user = client.user_management.create_user(
+    email="marcelina.davis@example.com",
+    first_name="Marcelina",
+    last_name="Davis",
+    email_verified=True,
+    password="i8uv6g34kd490s",
+)
 ```
 
-**Parameters**
+### Update User
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `email` | string | ✓ | The user's email. |
-| `password` | string | optional | Plain-text password. |
-| `password_hash` | string | optional | Pre-hashed password. |
-| `password_hash_type` | string | optional | Algorithm used for the hash. |
-| `first_name` | string | optional | |
-| `last_name` | string | optional | |
-| `email_verified` | boolean | optional | |
-| `external_id` | string | optional | |
-| `metadata` | object | optional | |
+Updates properties of a user. The omitted properties will be left unchanged.
 
-**Returns:** [`user`](#the-user-object)
+```python
+import workos
+
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+user = client.user_management.update_user(
+    user_id="user_01E4ZCR3C56J083X43JQXF3JK5",
+    first_name="Marcelina",
+    last_name="Davis",
+    email_verified=True,
+)
+```
+
+### Delete User
+
+Permanently deletes a user in the current environment.
+
+```python
+import workos
+
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+client.user_management.delete_user(
+    user_id="user_01E4ZCR3C56J083X43JQXF3JK5"
+)
+```
 
 ---
 
-## Update a User
+## Related
 
-Updates properties of a user. Omitted properties will be left unchanged.
-
-`PUT /user_management/users/:id`
-
-```bash
-curl --request PUT \
-  --url https://api.workos.com/user_management/users/user_01EHQ7ZGZ2CZVQJGZ5ZJZ1ZJGZ \
-  --header "Authorization: Bearer sk_example_123456789" \
-  --header "Content-Type: application/json" \
-  -d '{
-    "first_name": "Marcelina",
-    "last_name": "Davis",
-    "email_verified": true,
-    "external_id": "2fe01467-f7ea-4dd2-8b79-c2b4f56d0191",
-    "metadata": { "timezone": "America/New_York" },
-    "locale": "en-US"
-  }'
-```
-
-**Parameters**
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `id` | string | ✓ | User ID. |
-| `first_name` | string | optional | |
-| `last_name` | string | optional | |
-| `email` | string | optional | |
-| `email_verified` | boolean | optional | |
-| `password` | string | optional | |
-| `password_hash` | string | optional | |
-| `password_hash_type` | string | optional | |
-| `external_id` | string | optional | |
-| `metadata` | object | optional | |
-| `locale` | string | optional | |
-
-**Returns:** [`user`](#the-user-object)
-
----
-
-## Delete a User
-
-Permanently deletes a user in the current environment. It cannot be undone.
-
-`DELETE /user_management/users/:id`
-
-```bash
-curl --request DELETE \
-  --url https://api.workos.com/user_management/users/user_01F3GZ5ZGZBZVQGZVHJFVXZJGZ \
-  --header "Authorization: Bearer sk_example_123456789"
-```
-
-**Parameters**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `id` | string | User ID. |
+- [Events Reference – User Events](https://workos.com/docs/events/user)
+- [Organizations](https://workos.com/docs/reference/organization)
+- [Metadata](https://workos.com/docs/authkit/metadata)
+- [JIT Provisioning](https://workos.com/docs/authkit/jit-provisioning)

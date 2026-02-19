@@ -1,34 +1,14 @@
 # Session Tokens
 
-**Source:** https://workos.com/docs/reference/authkit/session-tokens
-
----
-
-## JWKS URL
-
-Hosts the public key used for verifying access tokens.
-
-`GET /sso/jwks`
-
-```bash
-curl https://api.workos.com/sso/jwks/client_123456789
-```
-
-**Parameters**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `clientId` | string | Your WorkOS Client ID. |
-
-**Returns:** `{ url: string }`
+Access tokens and refresh tokens are returned in successful authentication responses. The access token is a JWT signed by WorkOS, and the refresh token can be exchanged for a new access token.
 
 ---
 
 ## Access Token
 
-The access token returned in successful authentication responses is a JWT that can be used to verify an active session. It is signed by a JWKS retrievable from the WorkOS API.
+The access token is a JSON Web Token (JWT) that can be used to verify a user's active session. It is signed by a JWKS hosted by WorkOS. Validate it on each request using a JWT library such as `PyJWT` or `python-jose`.
 
-### Decoded Access Token Example
+### Decoded Access Token
 
 ```json
 {
@@ -49,25 +29,100 @@ The access token returned in successful authentication responses is a JWT that c
 }
 ```
 
-### Access Token JWT Claims
+### JWT Claims
 
-| Claim | Type | Description |
-|---|---|---|
-| `iss` | string | Issuer (`https://api.workos.com`). |
-| `sub` | string | Subject — the user's ID. |
-| `act` | object (optional) | Impersonator details (present during impersonation). |
-| `org_id` | string | The current organization ID. |
-| `role` | string | The user's primary role. |
-| `roles` | array | All roles the user has. |
-| `permissions` | string[] (optional) | Permission strings assigned to the user. |
-| `entitlements` | string[] (optional) | Entitlements assigned to the user. |
-| `sid` | string | Session ID. |
-| `jti` | string | JWT ID. |
-| `exp` | DateTime | Expiration time. |
-| `iat` | DateTime | Issued-at time. |
+| Claim          | Type       | Description                                                                       |
+|----------------|------------|-----------------------------------------------------------------------------------|
+| `iss`          | `str`      | Issuer — always `https://api.workos.com`.                                         |
+| `sub`          | `str`      | Subject — the user's WorkOS ID.                                                   |
+| `act`          | `object`   | Present during impersonation; contains the impersonator's email as `sub`.         |
+| `org_id`       | `str`      | The organization the session is scoped to.                                        |
+| `role`         | `str`      | The primary role of the user's organization membership.                           |
+| `roles`        | `list`     | All roles assigned to the user in the organization.                               |
+| `permissions`  | `list`     | Permissions granted to the user in the organization.                              |
+| `entitlements` | `list`     | Feature entitlements assigned to the user.                                        |
+| `sid`          | `str`      | Session ID — use this when calling logout or revoking sessions.                   |
+| `jti`          | `str`      | JWT ID — unique identifier for this specific token.                               |
+| `exp`          | `int`      | Expiration timestamp (Unix epoch).                                                |
+| `iat`          | `int`      | Issued-at timestamp (Unix epoch).                                                 |
 
 ---
 
 ## Refresh Token
 
-The refresh token can be used to obtain a new access token via the [Authenticate with Refresh Token](./04-authentication.md#authenticate-with-refresh-token) endpoint. Refresh tokens may only be used once. Refreshes succeed as long as the user's session is still active.
+The refresh token is returned alongside the access token in successful authentication responses. It can be used to obtain a new access token once the current one expires.
+
+- Refresh tokens may only be used **once** (they rotate after use).
+- Refreshes succeed as long as the user's session is still active.
+- Store refresh tokens securely on the backend (database, cache, or secure HTTP-only cookie).
+
+See [Authenticate with Refresh Token](https://workos.com/docs/reference/authkit/authentication) for usage.
+
+---
+
+## Get JWKS URL
+
+Retrieves the URL of the JSON Web Key Set (JWKS) used to verify access tokens.
+
+```python
+import workos
+
+client = workos.WorkOSClient(
+    api_key="sk_example_123456789",
+    client_id="client_123456789",
+)
+
+jwks_url = client.user_management.get_jwks_url(client_id="client_123456789")
+# Returns: "https://api.workos.com/sso/jwks/client_123456789"
+```
+
+**Parameters**
+
+| Parameter   | Type  | Required | Description             |
+|-------------|-------|----------|-------------------------|
+| `client_id` | `str` | Required | Your WorkOS client ID.  |
+
+**Returns:** `str` — The JWKS URL.
+
+---
+
+## Verifying an Access Token
+
+Use a JWT library to fetch the JWKS and validate the access token on each request.
+
+```python
+import requests
+from joserfc import jwt
+from joserfc.jwk import KeySet
+import workos
+
+client = workos.WorkOSClient(
+    api_key="sk_example_123456789",
+    client_id="client_123456789",
+)
+
+# Fetch and cache the JWKS (cache this in production)
+jwks_url = client.user_management.get_jwks_url(client_id="client_123456789")
+response = requests.get(jwks_url)
+key_set = KeySet.import_key_set(response.json())
+
+# Validate the access token
+token = jwt.decode(access_token, key_set)
+claims = token.claims
+
+user_id = claims["sub"]
+org_id = claims.get("org_id")
+role = claims.get("role")
+permissions = claims.get("permissions", [])
+```
+
+> **Tip:** Cache the JWKS and refresh it periodically rather than fetching on every request.
+
+---
+
+## Related
+
+- [Authentication](https://workos.com/docs/reference/authkit/authentication)
+- [Session](https://workos.com/docs/reference/authkit/session)
+- [Session Helpers](https://workos.com/docs/reference/authkit/session-helpers)
+- [Logout](https://workos.com/docs/reference/authkit/logout)

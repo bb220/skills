@@ -1,193 +1,270 @@
 # Organization Membership
 
-An organization membership is a top-level resource that represents a [user](https://workos.com/docs/reference/authkit/user)'s relationship with an [organization](https://workos.com/docs/reference/organization). A user may be a member of zero, one, or many organizations.
+An organization membership represents a [user](https://workos.com/docs/reference/authkit/user)'s relationship with an [organization](https://workos.com/docs/reference/organization). A user may be a member of zero, one, or many organizations.
 
 See the [events reference](https://workos.com/docs/events/organization-membership) documentation for organization membership events.
-
-**Source:** https://workos.com/docs/reference/authkit/organization-membership
 
 ---
 
 ## The Organization Membership Object
 
-```json
-{
-  "object": "organization_membership",
-  "id": "om_01E4ZCR3C56J083X43JQXF3JK5",
-  "user_id": "user_01E4ZCR3C5A4QZ2Z2JQXGKZJ9E",
-  "organization_id": "org_01E4ZCR3C56J083X43JQXF3JK5",
-  "organization_name": "Foo Corp",
-  "role": { "slug": "admin" },
-  "roles": [{ "slug": "admin" }],
-  "status": "active",
-  "created_at": "2021-06-25T19:07:33.155Z",
-  "updated_at": "2021-06-25T19:07:33.155Z"
+```python
+organization_membership = {
+    "object": "organization_membership",
+    "id": "om_01E4ZCR3C56J083X43JQXF3JK5",
+    "user_id": "user_01E4ZCR3C5A4QZ2Z2JQXGKZJ9E",
+    "organization_id": "org_01E4ZCR3C56J083X43JQXF3JK5",
+    "organization_name": "Foo Corp",
+    "role": {"slug": "admin"},
+    "roles": [{"slug": "admin"}],
+    "status": "active",
+    "created_at": "2021-06-25T19:07:33.155Z",
+    "updated_at": "2021-06-25T19:07:33.155Z",
 }
 ```
 
-### Properties
+---
 
-| Property | Type | Description |
-|---|---|---|
-| `object` | `"organization_membership"` | |
-| `id` | string | |
-| `userId` | string | |
-| `organizationId` | string | |
-| `organizationName` | string | |
-| `role` | object | Primary role. |
-| `roles` | array | All roles. |
-| `status` | `"active" \| "inactive" \| "pending"` | |
-| `createdAt` | string | |
-| `updatedAt` | string | |
+## Attributes
+
+### `OrganizationMembership`
+
+| Attribute           | Type   | Description                                                                   |
+|---------------------|--------|-------------------------------------------------------------------------------|
+| `id`                | `str`  | The unique ID of the membership.                                              |
+| `user_id`           | `str`  | The ID of the user.                                                           |
+| `organization_id`   | `str`  | The ID of the organization.                                                   |
+| `organization_name` | `str`  | The display name of the organization.                                         |
+| `role`              | `dict` | The primary role assigned to the user (e.g., `{"slug": "admin"}`).           |
+| `roles`             | `list` | All roles assigned to the user in this organization.                          |
+| `status`            | `str`  | `"active"`, `"inactive"`, or `"pending"`.                                    |
+| `created_at`        | `str`  | ISO 8601 timestamp when the membership was created.                           |
+| `updated_at`        | `str`  | ISO 8601 timestamp when the membership was last updated.                      |
 
 ---
 
-## Get an Organization Membership
+## Operations
 
-`GET /user_management/organization_memberships/:id`
+### Get an Organization Membership
 
-```bash
-curl https://api.workos.com/user_management/organization_memberships/om_01E4ZCR3C56J083X43JQXF3JK5 \
-  --header "Authorization: Bearer sk_example_123456789"
-```
+Retrieves the details of an existing organization membership.
 
-**Parameters:** `id: string`
+```python
+import workos
 
-**Returns:** `organization_membership` object
+client = workos.WorkOSClient(api_key="sk_example_123456789")
 
----
+membership = client.user_management.get_organization_membership(
+    id="om_01E4ZCR3C56J083X43JQXF3JK5"
+)
 
-## List Organization Memberships
-
-Get a list of all organization memberships matching the criteria. At least one of `user_id` or `organization_id` must be provided. By default only active memberships are returned; use `statuses` to filter.
-
-`GET /user_management/organization_memberships`
-
-```bash
-curl https://api.workos.com/user_management/organization_memberships \
-  --header "Authorization: Bearer sk_example_123456789"
+print(membership.status)            # "active"
+print(membership.role["slug"])      # "admin"
+print(membership.organization_name) # "Foo Corp"
 ```
 
 **Parameters**
 
-| Parameter | Type | Required |
-|---|---|---|
-| `user_id` | string | optional |
-| `organization_id` | string | optional |
-| `statuses` | array | optional |
-| `limit` | number | optional |
-| `before` | string | optional |
-| `after` | string | optional |
-| `order` | `"asc" \| "desc"` | optional |
+| Parameter | Type  | Required | Description                              |
+|-----------|-------|----------|------------------------------------------|
+| `id`      | `str` | Required | The ID of the organization membership.   |
 
-**Returns:** `{ data: array, list_metadata: object }`
+**Returns:** [`OrganizationMembership`](#the-organization-membership-object)
 
 ---
 
-## Create an Organization Membership
+### List Organization Memberships
 
-Creates a new `active` organization membership. Calling this API with a matching `inactive` membership will reactivate it with the specified role(s).
+Gets a list of organization memberships matching the specified criteria. At least one of `user_id` or `organization_id` must be provided. By default, only active memberships are returned.
 
-`POST /user_management/organization_memberships`
+```python
+import workos
 
-```bash
-curl --request POST \
-  --url https://api.workos.com/user_management/organization_memberships \
-  --header "Authorization: Bearer sk_example_123456789" \
-  -d user_id="user_01E4ZCR3C5A4QZ2Z2JQXGKZJ9E" \
-  -d organization_id="org_01E4ZCR3C56J083X43JQXF3JK5" \
-  -d role_slug="admin"
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+# List all memberships for a user
+memberships = client.user_management.list_organization_memberships(
+    user_id="user_01E4ZCR3C5A4QZ2Z2JQXGKZJ9E",
+)
+
+# List all memberships in an organization (including inactive)
+memberships = client.user_management.list_organization_memberships(
+    organization_id="org_01E4ZCR3C56J083X43JQXF3JK5",
+    statuses=["active", "inactive"],
+)
+
+for membership in memberships.data:
+    print(membership.user_id, membership.status)
 ```
 
 **Parameters**
 
-| Parameter | Type | Required |
-|---|---|---|
-| `user_id` | string | ✓ |
-| `organization_id` | string | ✓ |
-| `role_slug` | string | optional |
-| `role_slugs` | array | optional |
+| Parameter         | Type   | Required | Description                                                       |
+|-------------------|--------|----------|-------------------------------------------------------------------|
+| `user_id`         | `str`  | Optional | Filter by user ID. At least one of `user_id` or `organization_id` is required. |
+| `organization_id` | `str`  | Optional | Filter by organization ID.                                        |
+| `statuses`        | `list` | Optional | Filter by status: `["active"]`, `["inactive"]`, `["pending"]`, or a combination. Defaults to `["active"]`. |
+| `limit`           | `int`  | Optional | Maximum number of results.                                        |
+| `before`          | `str`  | Optional | Pagination cursor.                                                |
+| `after`           | `str`  | Optional | Pagination cursor.                                                |
+| `order`           | `str`  | Optional | `"asc"` or `"desc"`.                                            |
 
-**Returns:** `organization_membership` object
+**Returns**
+
+| Field           | Type                          | Description              |
+|-----------------|-------------------------------|--------------------------|
+| `data`          | `list[OrganizationMembership]`| List of memberships.     |
+| `list_metadata` | `object`                      | Pagination metadata.     |
 
 ---
 
-## Update an Organization Membership
+### Create an Organization Membership
 
-`PUT /user_management/organization_memberships/:id`
+Creates a new `active` organization membership. If a matching `inactive` membership exists, it will be activated with the specified role(s).
 
-```bash
-curl --request PUT \
-  --url https://api.workos.com/user_management/organization_memberships/om_01E4ZCR3C56J083X43JQXF3JK5 \
-  --header "Authorization: Bearer sk_example_123456789" \
-  --header "Content-Type: application/json" \
-  -d '{ "role_slug": "admin" }'
+```python
+import workos
+
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+membership = client.user_management.create_organization_membership(
+    user_id="user_01E4ZCR3C5A4QZ2Z2JQXGKZJ9E",
+    organization_id="org_01E4ZCR3C56J083X43JQXF3JK5",
+    role_slug="admin",
+)
+
+print(membership.id)     # "om_01E4ZCR3C56J083X43JQXF3JK5"
+print(membership.status) # "active"
 ```
 
 **Parameters**
 
-| Parameter | Type | Required |
-|---|---|---|
-| `id` | string | ✓ |
-| `role_slug` | string | optional |
-| `role_slugs` | array | optional |
+| Parameter         | Type   | Required | Description                                          |
+|-------------------|--------|----------|------------------------------------------------------|
+| `user_id`         | `str`  | Required | The ID of the user to add to the organization.       |
+| `organization_id` | `str`  | Required | The ID of the organization.                          |
+| `role_slug`       | `str`  | Optional | The primary role slug to assign (e.g., `"admin"`).   |
+| `role_slugs`      | `list` | Optional | Multiple role slugs to assign simultaneously.        |
 
-**Returns:** `organization_membership` object
+**Returns:** [`OrganizationMembership`](#the-organization-membership-object)
 
 ---
 
-## Delete an Organization Membership
+### Update an Organization Membership
 
-Permanently deletes an organization membership. Cannot be undone.
+Updates the role(s) of an existing organization membership.
 
-`DELETE /user_management/organization_memberships/:id`
+```python
+import workos
 
-```bash
-curl --request DELETE \
-  --url https://api.workos.com/user_management/organization_memberships/om_01E4ZCR3C56J083X43JQXF3JK5 \
-  --header "Authorization: Bearer sk_example_123456789"
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+membership = client.user_management.update_organization_membership(
+    id="om_01E4ZCR3C56J083X43JQXF3JK5",
+    role_slug="member",
+)
+
+print(membership.role["slug"]) # "member"
 ```
 
-**Parameters:** `id: string`
+**Parameters**
+
+| Parameter    | Type   | Required | Description                                   |
+|--------------|--------|----------|-----------------------------------------------|
+| `id`         | `str`  | Required | The ID of the membership to update.           |
+| `role_slug`  | `str`  | Optional | New primary role slug.                        |
+| `role_slugs` | `list` | Optional | Replace all roles with this list of slugs.    |
+
+**Returns:** [`OrganizationMembership`](#the-organization-membership-object)
 
 ---
 
-## Deactivate an Organization Membership
+### Delete an Organization Membership
+
+Permanently deletes an organization membership. This action cannot be undone.
+
+```python
+import workos
+
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+client.user_management.delete_organization_membership(
+    id="om_01E4ZCR3C56J083X43JQXF3JK5"
+)
+```
+
+**Parameters**
+
+| Parameter | Type  | Required | Description                              |
+|-----------|-------|----------|------------------------------------------|
+| `id`      | `str` | Required | The ID of the membership to delete.      |
+
+**Returns:** No content on success.
+
+---
+
+### Deactivate an Organization Membership
 
 Deactivates an `active` membership. Emits an `organization_membership.updated` event.
 
-- Deactivating an `inactive` membership is a no-op (no event emitted).
+- Deactivating an `inactive` membership is a no-op.
 - Deactivating a `pending` membership returns an error — delete it instead.
 
-`PUT /user_management/organization_memberships/:id/deactivate`
+```python
+import workos
 
-```bash
-curl --request PUT \
-  --url https://api.workos.com/user_management/organization_memberships/om_01E4ZCR3C56J083X43JQXF3JK5/deactivate \
-  --header "Authorization: Bearer sk_example_123456789"
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+membership = client.user_management.deactivate_organization_membership(
+    id="om_01E4ZCR3C56J083X43JQXF3JK5"
+)
+
+print(membership.status) # "inactive"
 ```
 
-**Parameters:** `id: string`
+**Parameters**
 
-**Returns:** `organization_membership` object
+| Parameter | Type  | Required | Description                                  |
+|-----------|-------|----------|----------------------------------------------|
+| `id`      | `str` | Required | The ID of the membership to deactivate.      |
+
+**Returns:** [`OrganizationMembership`](#the-organization-membership-object)
 
 ---
 
-## Reactivate an Organization Membership
+### Reactivate an Organization Membership
 
-Reactivates an `inactive` membership, retaining existing role(s). Emits an `organization_membership.updated` event.
+Reactivates an `inactive` membership, restoring the user's pre-existing role(s). Emits an `organization_membership.updated` event.
 
-- Reactivating an `active` membership is a no-op (no event emitted).
-- Reactivating a `pending` membership returns an error — the user must accept the invitation.
+- Reactivating an `active` membership is a no-op.
+- Reactivating a `pending` membership returns an error — the user must accept the invitation instead.
 
-`PUT /user_management/organization_memberships/:id/reactivate`
+```python
+import workos
 
-```bash
-curl --request PUT \
-  --url https://api.workos.com/user_management/organization_memberships/om_01E4ZCR3C56J083X43JQXF3JK5/reactivate \
-  --header "Authorization: Bearer sk_example_123456789"
+client = workos.WorkOSClient(api_key="sk_example_123456789")
+
+membership = client.user_management.reactivate_organization_membership(
+    id="om_01E4ZCR3C56J083X43JQXF3JK5"
+)
+
+print(membership.status) # "active"
 ```
 
-**Parameters:** `id: string`
+**Parameters**
 
-**Returns:** `organization_membership` object
+| Parameter | Type  | Required | Description                                  |
+|-----------|-------|----------|----------------------------------------------|
+| `id`      | `str` | Required | The ID of the membership to reactivate.      |
+
+**Returns:** [`OrganizationMembership`](#the-organization-membership-object)
+
+---
+
+## Related
+
+- [User](https://workos.com/docs/reference/authkit/user)
+- [Organization](https://workos.com/docs/reference/organization)
+- [Invitation](https://workos.com/docs/reference/authkit/invitation)
+- [Events Reference – Organization Membership Events](https://workos.com/docs/events/organization-membership)
+- [Membership Management Guide](https://workos.com/docs/authkit/users-organizations/organizations/membership-management)
